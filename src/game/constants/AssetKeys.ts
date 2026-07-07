@@ -22,12 +22,15 @@ export const AssetKeys = {
         Scientist1Idle: 'scientist-1-idle',
         Scientist1Walk: 'scientist-1-walk',
         Scientist1Run: 'scientist-1-run',
+        Scientist1Special: 'scientist-1-special',
         Scientist2Idle: 'scientist-2-idle',
         Scientist2Walk: 'scientist-2-walk',
         Scientist2Run: 'scientist-2-run',
+        Scientist2Special: 'scientist-2-special',
         Scientist3Idle: 'scientist-3-idle',
         Scientist3Walk: 'scientist-3-walk',
-        Scientist3Run: 'scientist-3-run'
+        Scientist3Run: 'scientist-3-run',
+        Scientist3Special: 'scientist-3-special'
     },
     Avatars: {
         Scientist1: {
@@ -68,6 +71,9 @@ export const AssetKeys = {
     },
     Audio: {
         Level1Loop: 'level1-loop',
-        Typewriter: 'typewrite'
+        Typewriter: 'typewrite',
+        CinematicHit: 'cinematic-hit',
+        GameOver: 'gameover',
+        Piano: 'piano1'
     }
 } as const;

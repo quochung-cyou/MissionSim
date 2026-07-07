@@ -1,18 +1,18 @@
 {
   "name": "missionsim",
-  "description": "MissionSim - a tactical NPC mission simulation game.",
+  "description": "Mission Sim — a live mission console for benchmarking embodied AI crews under real-time constraints.",
   "version": "1.4.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/phaserjs/template-vite-ts.git"
+    "url": "git+https://github.com/YOUR_USERNAME/mission-sim.git"
   },
-  "author": "Phaser Studio <support@phaser.io> (https://phaser.io/)",
+  "author": "YOUR_TEAM_NAME <your-email@example.com>",
   "license": "MIT",
   "licenseUrl": "http://www.opensource.org/licenses/mit-license.php",
   "bugs": {
-    "url": "https://github.com/phaserjs/template-vite-ts/issues"
+    "url": "https://github.com/YOUR_USERNAME/mission-sim/issues"
   },
-  "homepage": "https://github.com/phaserjs/template-vite-ts#readme",
+  "homepage": "https://github.com/YOUR_USERNAME/mission-sim#readme",
   "scripts": {
     "dev": "node log.js dev & vite --config vite/config.dev.mjs",
     "build": "node log.js build & vite build --config vite/config.prod.mjs",

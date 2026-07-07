@@ -51,12 +51,15 @@ export class Preloader extends Scene
         this.load.spritesheet(AssetKeys.Scientists.Scientist1Idle, 'Scientists_1/Idle.png', frameSize);
         this.load.spritesheet(AssetKeys.Scientists.Scientist1Walk, 'Scientists_1/Walk.png', frameSize);
         this.load.spritesheet(AssetKeys.Scientists.Scientist1Run, 'Scientists_1/Run.png', frameSize);
+        this.load.spritesheet(AssetKeys.Scientists.Scientist1Special, 'Scientists_1/Special.png', frameSize);
         this.load.spritesheet(AssetKeys.Scientists.Scientist2Idle, 'Scientists_2/Idle.png', frameSize);
         this.load.spritesheet(AssetKeys.Scientists.Scientist2Walk, 'Scientists_2/Walk.png', frameSize);
         this.load.spritesheet(AssetKeys.Scientists.Scientist2Run, 'Scientists_2/Run.png', frameSize);
+        this.load.spritesheet(AssetKeys.Scientists.Scientist2Special, 'Scientists_2/Special.png', frameSize);
         this.load.spritesheet(AssetKeys.Scientists.Scientist3Idle, 'Scientists_3/Idle.png', frameSize);
         this.load.spritesheet(AssetKeys.Scientists.Scientist3Walk, 'Scientists_3/Walk.png', frameSize);
         this.load.spritesheet(AssetKeys.Scientists.Scientist3Run, 'Scientists_3/Run.png', frameSize);
+        this.load.spritesheet(AssetKeys.Scientists.Scientist3Special, 'Scientists_3/Special.png', frameSize);
 
         this.loadAvatarSet(AssetKeys.Avatars.Scientist1, 'avatar/Scientists_1');
         this.loadAvatarSet(AssetKeys.Avatars.Scientist2, 'avatar/Scientists_2');
@@ -64,6 +67,9 @@ export class Preloader extends Scene
 
         this.load.audio(AssetKeys.Audio.Level1Loop, 'sound/level1_loop.wav');
         this.load.audio(AssetKeys.Audio.Typewriter, 'sound/typewrite.wav');
+        this.load.audio(AssetKeys.Audio.CinematicHit, 'sound/cinematic_hit.mp3');
+        this.load.audio(AssetKeys.Audio.GameOver, 'sound/gameover.wav');
+        this.load.audio(AssetKeys.Audio.Piano, 'sound/piano1.wav');
     }
 
     private loadAvatarSet (keys: Record<string, string>, basePath: string): void {
@@ -87,12 +93,15 @@ export class Preloader extends Scene
         this.createLoopAnimation(AssetKeys.Scientists.Scientist1Idle, 6, 6);
         this.createLoopAnimation(AssetKeys.Scientists.Scientist1Walk, 12, 12);
         this.createLoopAnimation(AssetKeys.Scientists.Scientist1Run, 12, 12);
+        this.createLoopAnimation(AssetKeys.Scientists.Scientist1Special, 12, 12);
         this.createLoopAnimation(AssetKeys.Scientists.Scientist2Idle, 6, 6);
         this.createLoopAnimation(AssetKeys.Scientists.Scientist2Walk, 12, 12);
         this.createLoopAnimation(AssetKeys.Scientists.Scientist2Run, 11, 12);
+        this.createLoopAnimation(AssetKeys.Scientists.Scientist2Special, 12, 12);
         this.createLoopAnimation(AssetKeys.Scientists.Scientist3Idle, 7, 6);
         this.createLoopAnimation(AssetKeys.Scientists.Scientist3Walk, 12, 12);
         this.createLoopAnimation(AssetKeys.Scientists.Scientist3Run, 12, 12);
+        this.createLoopAnimation(AssetKeys.Scientists.Scientist3Special, 12, 12);
     }
 
     private createEnergyObjectAnimations (): void

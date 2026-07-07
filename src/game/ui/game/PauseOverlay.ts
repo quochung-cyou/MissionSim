@@ -15,20 +15,21 @@ export class PauseOverlay {
         const gameHeight = this.scene.scale.height;
 
         const dimBg = this.scene.add.rectangle(0, 0, gameWidth, gameHeight, 0x000000, 0.6)
-            .setOrigin(0, 0);
+            .setOrigin(0, 0)
+            .setScrollFactor(0);
 
         const panelWidth = 300;
         const panelHeight = 200;
 
         const panel = this.scene.add.rectangle(
             gameWidth / 2, gameHeight / 2, panelWidth, panelHeight, 0x1a1a2e
-        ).setStrokeStyle(3, 0x6c5ce7);
+        ).setStrokeStyle(3, 0x6c5ce7).setScrollFactor(0);
 
         const title = this.scene.add.text(gameWidth / 2, gameHeight / 2 - 60, 'PAUSED', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '24px',
             color: '#ffffff'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setScrollFactor(0);
 
         const resumeBtn = this.createButton('RESUME', gameWidth / 2, gameHeight / 2, 160, 36, 0x2e7d32, 0x43a047, () => {
             this.hide();
@@ -41,7 +42,7 @@ export class PauseOverlay {
         });
 
         this.container = this.scene.add.container(0, 0, [dimBg, panel, title, resumeBtn, quitBtn])
-            .setDepth(300)
+            .setDepth(1500)
             .setVisible(false);
     }
 
@@ -70,13 +71,14 @@ export class PauseOverlay {
         onClick: () => void
     ): Phaser.GameObjects.Container {
         const bg = this.scene.add.rectangle(x, y, width, height, idleColor)
-            .setStrokeStyle(2, 0xffffff);
+            .setStrokeStyle(2, 0xffffff)
+            .setScrollFactor(0);
 
         const label = this.scene.add.text(x, y, text, {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '11px',
             color: '#ffffff'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setScrollFactor(0);
 
         [bg, label].forEach(obj => {
             obj.setInteractive();
@@ -85,6 +87,6 @@ export class PauseOverlay {
             obj.on('pointerdown', onClick);
         });
 
-        return this.scene.add.container(0, 0, [bg, label]);
+        return this.scene.add.container(0, 0, [bg, label]).setScrollFactor(0);
     }
 }

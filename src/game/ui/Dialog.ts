@@ -80,6 +80,13 @@ export class Dialog {
         this.startTypewriter(text);
     }
 
+    showInstant (name: string, text: string, avatar: AvatarRef): void {
+        this.nameText.setText(name);
+        this.avatar.setTexture(this.resolveAvatarKey(avatar));
+        this.bodyText.setText(text);
+        this.container.setVisible(true);
+    }
+
     hide (): void {
         this.stopTypewriter();
         this.container.setVisible(false);
@@ -87,6 +94,10 @@ export class Dialog {
 
     isVisible (): boolean {
         return this.container.visible;
+    }
+
+    getScene (): Phaser.Scene {
+        return this.container.scene;
     }
 
     private resolveAvatarKey (avatar: AvatarRef): string {

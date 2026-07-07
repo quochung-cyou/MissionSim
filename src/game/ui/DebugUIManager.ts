@@ -10,6 +10,8 @@ interface MachineTarget {
 export class DebugUIManager {
     private wanderButtonLabel?: Phaser.GameObjects.Text;
     private runModeButtonLabel?: Phaser.GameObjects.Text;
+    private readonly gameObjects: Phaser.GameObjects.Components.Visible[] = [];
+    private visible = false;
 
     constructor (
         private readonly scene: Phaser.Scene,
@@ -17,6 +19,18 @@ export class DebugUIManager {
         private readonly dialogService: DialogService
     ) {
         this.createUI();
+        this.setVisible(false);
+
+        (window as any).showDebug = () => this.setVisible(true);
+        (window as any).hideDebug = () => this.setVisible(false);
+        (window as any).toggleDebug = () => this.setVisible(!this.visible);
+    }
+
+    private setVisible (visible: boolean): void {
+        this.visible = visible;
+        for (const obj of this.gameObjects) {
+            obj.setVisible(visible);
+        }
     }
 
     private createUI (): void {
@@ -28,8 +42,10 @@ export class DebugUIManager {
 
         // NPC select buttons
         for (let i = 0; i < this.npcManager.npcCount; i++) {
+            const type = this.npcManager.getNpcType(i) ?? 'NPC';
+            const label = `${type.charAt(0).toUpperCase() + type.slice(1)} ${i + 1}`;
             this.createButton(
-                `NPC ${i + 1}`,
+                label,
                 startX + i * (buttonWidth + gap),
                 startY,
                 buttonWidth,
@@ -41,10 +57,10 @@ export class DebugUIManager {
         // Machine target buttons
         const targets: MachineTarget[] = [
             { label: 'Crane', x: 200 },
-            { label: 'Mach 1', x: 600 },
-            { label: 'Mach 2', x: 1000 },
-            { label: 'Mach 3', x: 1400 },
-            { label: 'Mach 4', x: 1800 },
+            { label: 'Coolant', x: 600 },
+            { label: 'Oxygen', x: 1000 },
+            { label: 'Reactor', x: 1400 },
+            { label: 'Terminal', x: 1800 },
             { label: 'Oil', x: 2300 }
         ];
 
@@ -121,6 +137,7 @@ export class DebugUIManager {
             .setStrokeStyle(2, 0xffffff)
             .setScrollFactor(0)
             .setDepth(100);
+        this.gameObjects.push(bg);
 
         const label = this.scene.add.text(x + width / 2, y + height / 2, text, {
             color: '#ffffff',
@@ -129,6 +146,7 @@ export class DebugUIManager {
             .setOrigin(0.5)
             .setScrollFactor(0)
             .setDepth(101);
+        this.gameObjects.push(label);
 
         const activate = () => {
             onClick();

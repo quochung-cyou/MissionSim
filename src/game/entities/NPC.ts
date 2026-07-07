@@ -14,6 +14,14 @@ export interface NPCConfig {
     energyRegenPerSecond: number;
 }
 
+// NPC overhead UI offsets — tune these to move labels/bars closer or further from the head.
+// Negative values move the element ABOVE the NPC's center. Smaller absolute values = closer to head.
+const NAME_LABEL_OFFSET_Y = -70;
+const STATUS_LABEL_OFFSET_Y = -55;
+const WORKING_ICON_OFFSET_Y = -40;
+const STAMINA_BAR_OFFSET_Y = -25;
+const STAMINA_LABEL_OFFSET_X = -35; // left of the bar center
+
 export class NPC extends Physics.Arcade.Sprite {
     private aiState: NPCState = 'idle';
     private aiTimer: number = 0;
@@ -24,8 +32,14 @@ export class NPC extends Physics.Arcade.Sprite {
     private energy: number;
     private energyBarBg: Phaser.GameObjects.Rectangle;
     private energyBarFill: Phaser.GameObjects.Rectangle;
+    private staminaLabel: Phaser.GameObjects.Text;
+    private workingIcon: Phaser.GameObjects.Text;
+    private statusLabel: Phaser.GameObjects.Text;
+    private nameLabel: Phaser.GameObjects.Text;
+    private isWorking = false;
 
     private readonly config: NPCConfig;
+    private readonly specialKey: string | null;
 
     constructor(
         scene: Phaser.Scene,
@@ -34,7 +48,8 @@ export class NPC extends Physics.Arcade.Sprite {
         private readonly idleKey: string,
         private readonly walkKey: string,
         private readonly runKey: string,
-        config?: Partial<NPCConfig>
+        config?: Partial<NPCConfig>,
+        specialKey?: string
     ) {
         super(scene, x, y, idleKey);
 
@@ -66,17 +81,66 @@ export class NPC extends Physics.Arcade.Sprite {
         body.setSize(this.width * 0.6, this.height * 0.9);
         body.setOffset(this.width * 0.2, this.height * 0.1);
 
-        // Energy bar above the NPC
+        // Stamina bar above the NPC
         const barWidth = 50;
         const barHeight = 6;
-        const barOffsetY = -78;
-        this.energyBarBg = scene.add.rectangle(x, y + barOffsetY, barWidth, barHeight, 0x000000)
+        this.energyBarBg = scene.add.rectangle(x, y + STAMINA_BAR_OFFSET_Y, barWidth, barHeight, 0x000000)
             .setStrokeStyle(1, 0xffffff)
             .setDepth(11)
             .setVisible(false);
-        this.energyBarFill = scene.add.rectangle(x - barWidth / 2 + 1, y + barOffsetY, barWidth - 2, barHeight - 2, 0x00ff00)
+        this.energyBarFill = scene.add.rectangle(x - barWidth / 2 + 1, y + STAMINA_BAR_OFFSET_Y, barWidth - 2, barHeight - 2, 0x00ff00)
             .setOrigin(0, 0.5)
             .setDepth(12)
+            .setVisible(false);
+        this.staminaLabel = scene.add.text(x + STAMINA_LABEL_OFFSET_X, y + STAMINA_BAR_OFFSET_Y, 'Stamina', {
+            fontFamily: 'Arial',
+            fontSize: '10px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2,
+        })
+            .setOrigin(1, 0.5)
+            .setDepth(12)
+            .setVisible(false);
+
+        this.specialKey = specialKey ?? null;
+
+        this.workingIcon = scene.add.text(x, y + WORKING_ICON_OFFSET_Y, '\u2699', {
+            fontFamily: 'Arial',
+            fontSize: '20px',
+            color: '#ffcc00',
+            stroke: '#000000',
+            strokeThickness: 3,
+        })
+            .setOrigin(0.5)
+            .setDepth(13)
+            .setVisible(false);
+
+        this.statusLabel = scene.add.text(x, y + STATUS_LABEL_OFFSET_Y, '', {
+            fontFamily: 'Arial',
+            fontSize: '12px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3,
+            backgroundColor: '#000000aa',
+            padding: { x: 4, y: 2 },
+            wordWrap: { width: 180 },
+        })
+            .setOrigin(0.5)
+            .setDepth(14)
+            .setVisible(false);
+
+        this.nameLabel = scene.add.text(x, y + NAME_LABEL_OFFSET_Y, '', {
+            fontFamily: 'Arial',
+            fontSize: '14px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3,
+            backgroundColor: '#000000aa',
+            padding: { x: 6, y: 2 },
+        })
+            .setOrigin(0.5)
+            .setDepth(15)
             .setVisible(false);
     }
 
@@ -95,6 +159,10 @@ export class NPC extends Physics.Arcade.Sprite {
         return this.energy;
     }
 
+    setEnergy(value: number): void {
+        this.energy = Math.max(0, Math.min(this.config.maxEnergy, value));
+    }
+
     getMaxEnergy(): number {
         return this.config.maxEnergy;
     }
@@ -104,6 +172,48 @@ export class NPC extends Physics.Arcade.Sprite {
         if (!enabled && this.aiState !== 'goToTarget' && this.aiState !== 'runToTarget') {
             this.setIdle();
         }
+    }
+
+    playSpecial(label?: string): void {
+        this.isWorking = true;
+        this.setVelocityX(0);
+        this.workingIcon.setVisible(true);
+        if (label) {
+            this.statusLabel.setText(label);
+            this.statusLabel.setVisible(true);
+        }
+        if (this.specialKey) {
+            this.play(this.specialKey);
+        } else {
+            this.play(this.idleKey);
+        }
+    }
+
+    stopSpecial(): void {
+        if (this.isWorking) {
+            this.isWorking = false;
+            this.workingIcon.setVisible(false);
+            this.statusLabel.setVisible(false);
+            this.setIdle();
+        }
+    }
+
+    showStatus(text: string): void {
+        this.statusLabel.setText(text);
+        this.statusLabel.setVisible(true);
+    }
+
+    hideStatus(): void {
+        this.statusLabel.setVisible(false);
+    }
+
+    setDisplayName(name: string): void {
+        this.nameLabel.setText(name);
+        this.nameLabel.setVisible(true);
+    }
+
+    get working(): boolean {
+        return this.isWorking;
     }
 
     get wandering(): boolean {
@@ -120,6 +230,20 @@ export class NPC extends Physics.Arcade.Sprite {
 
     update(_time: number, delta: number): void {
         const body = this.body as Physics.Arcade.Body;
+
+        this.nameLabel.setPosition(this.x, this.y + NAME_LABEL_OFFSET_Y);
+
+        if (this.isWorking) {
+            this.workingIcon.setPosition(this.x, this.y + WORKING_ICON_OFFSET_Y);
+            this.statusLabel.setPosition(this.x, this.y + STATUS_LABEL_OFFSET_Y);
+            this.updateEnergyBar();
+            return;
+        }
+
+        // Keep status label (e.g. standby) positioned above NPC even when not working
+        if (this.statusLabel.visible) {
+            this.statusLabel.setPosition(this.x, this.y + STATUS_LABEL_OFFSET_Y);
+        }
 
         if (this.aiState === 'goToTarget' || this.aiState === 'runToTarget') {
             this.updateMoveToTarget(delta);
@@ -187,12 +311,12 @@ export class NPC extends Physics.Arcade.Sprite {
     private updateEnergyBar(): void {
         const barWidth = 50;
         const barHeight = 6;
-        const barOffsetY = -78;
         const maxFillWidth = barWidth - 2;
         const fillHeight = barHeight - 2;
 
-        this.energyBarBg.setPosition(this.x, this.y + barOffsetY);
-        this.energyBarFill.setPosition(this.x - barWidth / 2 + 1, this.y + barOffsetY);
+        this.energyBarBg.setPosition(this.x, this.y + STAMINA_BAR_OFFSET_Y);
+        this.energyBarFill.setPosition(this.x - barWidth / 2 + 1, this.y + STAMINA_BAR_OFFSET_Y);
+        this.staminaLabel.setPosition(this.x + STAMINA_LABEL_OFFSET_X, this.y + STAMINA_BAR_OFFSET_Y);
 
         const ratio = this.energy / this.config.maxEnergy;
         const fillWidth = Math.max(0, maxFillWidth * ratio);
@@ -206,6 +330,7 @@ export class NPC extends Physics.Arcade.Sprite {
 
         this.energyBarBg.setVisible(show);
         this.energyBarFill.setVisible(show);
+        this.staminaLabel.setVisible(show);
     }
 
     private moveToward(x: number, running: boolean): void {

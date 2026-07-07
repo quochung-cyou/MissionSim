@@ -1,39 +1,60 @@
-import { AssetKeys } from '../constants/AssetKeys';
+import { LevelConfig } from '../config/LevelConfig';
+import { OilReserve } from '../entities/OilReserve';
+import { Reactor } from '../entities/machines/Reactor';
+import { CoolantPump } from '../entities/machines/CoolantPump';
+import { OxygenGenerator } from '../entities/machines/OxygenGenerator';
+import { SubSystemTerminal } from '../entities/machines/SubSystemTerminal';
+import { Crane } from '../entities/machines/Crane';
+import { GameState } from '../state/GameState';
+import { GameEventBus } from '../events/GameEventBus';
 
-interface EnergyObjectConfig {
-    key: string;
-    x: number;
-    y: number;
-    scale: number;
-    animated: boolean;
-}
+const GROUND_Y = 448;
 
 export class EnergyObjectManager {
-    spawn (scene: Phaser.Scene): void {
-        const groundY = 448;
+    private oilReserve?: OilReserve;
+    private reactor?: Reactor;
+    private coolantPump?: CoolantPump;
+    private oxygenGenerator?: OxygenGenerator;
+    private terminal?: SubSystemTerminal;
+    private crane?: Crane;
 
-        const energyObjects: EnergyObjectConfig[] = [
-            { key: AssetKeys.EnergyObjects.Energy1, x: 200, y: groundY, scale: 1, animated: true },
-            { key: AssetKeys.EnergyObjects.Energy2, x: 600, y: groundY, scale: 1, animated: true },
-            { key: AssetKeys.EnergyObjects.Energy3, x: 1000, y: groundY, scale: 1, animated: true },
-            { key: AssetKeys.EnergyObjects.Machine3, x: 1400, y: groundY, scale: 1, animated: false },
-            { key: AssetKeys.EnergyObjects.Machine4, x: 1800, y: groundY, scale: 1, animated: false },
-            { key: AssetKeys.EnergyObjects.OilReserve, x: 2300, y: groundY, scale: 0.8, animated: false }
-        ];
+    spawn (scene: Phaser.Scene, config: LevelConfig, state: GameState, bus: GameEventBus): void {
+        const mc = config.machineConfig;
+        const pos = mc.positions;
 
-        energyObjects.forEach(obj => {
-            if (obj.animated) {
-                scene.add.sprite(obj.x, obj.y, obj.key)
-                    .setOrigin(0.5, 1)
-                    .setDepth(5)
-                    .setScale(obj.scale)
-                    .play(obj.key);
-            } else {
-                scene.add.image(obj.x, obj.y, obj.key)
-                    .setOrigin(0.5, 1)
-                    .setDepth(5)
-                    .setScale(obj.scale);
-            }
-        });
+        this.reactor = new Reactor(scene, GROUND_Y, pos.reactor, mc.reactor);
+        this.coolantPump = new CoolantPump(scene, GROUND_Y, this.reactor, mc.coolantPump.maxPower, pos.coolantPump, mc.coolantPump.coolingPerPower);
+        this.oxygenGenerator = new OxygenGenerator(scene, GROUND_Y, mc.oxygenGenerator.maxPower, pos.oxygenGenerator, mc.oxygenGenerator.oxygenPerPower, mc.oxygenGenerator.nativeDrainRate);
+        this.crane = new Crane(scene, GROUND_Y, mc.crane.maxPower, pos.crane, mc.crane.powerRequired);
+        this.terminal = new SubSystemTerminal(scene, GROUND_Y, pos.terminal);
+        this.oilReserve = new OilReserve(scene, pos.oilReserve, GROUND_Y, state, bus);
+
+        this.terminal.registerConsumer(this.coolantPump, 0);
+        this.terminal.registerConsumer(this.oxygenGenerator, 0);
+        this.terminal.registerConsumer(this.crane, 0);
+    }
+
+    getOilReserve (): OilReserve | undefined {
+        return this.oilReserve;
+    }
+
+    getReactor (): Reactor | undefined {
+        return this.reactor;
+    }
+
+    getCoolantPump (): CoolantPump | undefined {
+        return this.coolantPump;
+    }
+
+    getOxygenGenerator (): OxygenGenerator | undefined {
+        return this.oxygenGenerator;
+    }
+
+    getTerminal (): SubSystemTerminal | undefined {
+        return this.terminal;
+    }
+
+    getCrane (): Crane | undefined {
+        return this.crane;
     }
 }
