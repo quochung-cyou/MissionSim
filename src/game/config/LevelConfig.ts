@@ -127,7 +127,7 @@ export const DefaultLevels: LevelConfig[] = [
                 fuelConsumptionRate: 10,
                 heatGenerationRate: 20,
                 powerOutput: 100,
-                maxHeat: 10000,
+                maxHeat: 2000,
                 baseHeat: 40,
             },
             oxygenGenerator: {
@@ -164,7 +164,7 @@ export const DefaultLevels: LevelConfig[] = [
     },
 ];
 
-export function getDefaultLevelConfig (levelId: number): LevelConfig {
+export function getDefaultLevelConfig(levelId: number): LevelConfig {
     const level = DefaultLevels.find(l => l.levelId === levelId);
     if (!level) {
         throw new Error(`Level ${levelId} not found`);
