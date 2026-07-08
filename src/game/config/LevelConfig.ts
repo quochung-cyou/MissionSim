@@ -141,7 +141,7 @@ export const DefaultLevels: LevelConfig[] = [
             },
             crane: {
                 powerRequired: 60,
-                progressRate: 1,
+                progressRate: 0.5,
                 maxPower: 100,
             },
             npc: {

@@ -18,6 +18,7 @@ import { FailureManager } from '../failures/FailureManager';
 import { OilPipeRupture } from '../failures/OilPipeRupture';
 import { CoolantLockout } from '../failures/CoolantLockout';
 import { TotalBlackout } from '../failures/TotalBlackout';
+import { LowOxygen } from '../failures/LowOxygen';
 import { SimulationManager } from '../managers/SimulationManager';
 import { MachineRegistry } from '../services/MachineRegistry';
 import { ScenarioService } from '../services/ScenarioService';
@@ -42,7 +43,7 @@ export class Game extends Scene
     private bgMusic?: Phaser.Sound.BaseSound;
     private eventBus: GameEventBus;
     private gameState: GameState;
-    private levelConfig!: LevelConfig;
+    private levelConfig!: LevelConfig & { sessionId?: string };
     private simulationManager!: SimulationManager;
     private machineRegistry!: MachineRegistry;
     private scenarioService!: ScenarioService;
@@ -53,7 +54,7 @@ export class Game extends Scene
         super('Game');
     }
 
-    create (data: LevelConfig)
+    create (data: LevelConfig & { sessionId?: string })
     {
         this.levelConfig = data;
         this.isPaused = false;
@@ -102,6 +103,7 @@ export class Game extends Scene
             }
         ));
         this.failureManager.add(new TotalBlackout());
+        this.failureManager.add(new LowOxygen(this.gameState, { threshold: 30 }));
 
         this.machineRegistry = new MachineRegistry(terminal, reactor, crane, coolantPump, oxygenGenerator, oilReserve);
 
@@ -154,9 +156,15 @@ export class Game extends Scene
             this.machineManager,
             this.failureManager,
             this.machineRegistry,
-            data
+            data,
+            this.eventBus
         );
         this.simulationManager.setDialogService(this.dialogService);
+        
+        if (data.sessionId) {
+            this.simulationManager.getLogger().setSessionId(data.sessionId);
+        }
+        
         this.simulationManager.start();
 
         this.scenarioService = new ScenarioService(
@@ -270,23 +278,23 @@ export class Game extends Scene
         this.scene.start(SceneKeys.MainMenu);
     }
 
-    private gameOver (): void
+    private async gameOver (): Promise<void>
     {
         this.scenarioOverlay?.hide();
         this.simulationManager.stop();
-        this.simulationManager.finishLogging('timeout', 'timeout');
+        await this.simulationManager.finishLogging('timeout', 'timeout');
         this.dialogService.hide();
         this.sound.stopAll();
         this.bgMusic?.stop();
         this.scene.start(SceneKeys.GameOver, { reason: 'timeout', levelConfig: this.levelConfig });
     }
 
-    private handleGameEnd (reason: string): void
+    private async handleGameEnd (reason: string): Promise<void>
     {
         this.scenarioOverlay?.hide();
         this.isPaused = true;
         this.simulationManager.stop();
-        const record = this.simulationManager.finishLogging(reason === 'win' ? 'win' : 'lose', reason);
+        const record = await this.simulationManager.finishLogging(reason === 'win' ? 'win' : 'lose', reason);
         this.physics.pause();
         this.dialogService.hide();
         this.sound.stopAll();

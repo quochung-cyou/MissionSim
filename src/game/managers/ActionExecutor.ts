@@ -4,6 +4,7 @@ import { MachineRegistry } from '../services/MachineRegistry';
 import { MachineId } from '../constants/MachineId';
 import { LevelConfig } from '../config/LevelConfig';
 import { GameState } from '../state/GameState';
+import { FailureManager } from '../failures/FailureManager';
 
 const ALLOCATE_BUSY_TIME = 1.0;
 const POSITION_TOLERANCE = 5;
@@ -31,6 +32,7 @@ export class ActionExecutor {
         private readonly machineRegistry: MachineRegistry,
         private readonly levelConfig: LevelConfig,
         private readonly gameState: GameState,
+        private readonly failureManager: FailureManager,
     ) {}
 
     setOnTaskFinished (callback: (agentId: string, task: string) => void): void {
@@ -138,6 +140,12 @@ export class ActionExecutor {
                     this.releaseAgentReservation(agentId);
                     return this.setLastRejectionReason(agentId, `You are at x=${Math.floor(npc.x)} but must be at ${machineName} (x=${repairX}) to repair it.`);
                 }
+                // If the failure was already fixed by someone else, drain this action silently.
+                if (!this.failureManager.hasFixableFailureAt(repairX)) {
+                    console.log(`[ActionExecutor] ${displayName} repair at ${machineName} drained — failure already resolved`);
+                    this.releaseAgentReservation(agentId);
+                    return this.clearOnSuccess(agentId);
+                }
                 const fixDuration = this.getFixDuration(machineId);
                 this.busyInfo.set(agentId, { task: 'repairing', timeRemaining: fixDuration });
                 npc.playSpecial('Repairing...');
@@ -164,6 +172,12 @@ export class ActionExecutor {
                     this.releaseAgentReservation(agentId);
                     return this.setLastRejectionReason(agentId, `You are at x=${Math.floor(npc.x)} but must be at ${machineName} (x=${machineX}) to ${command.type} it.`);
                 }
+                // For reset, drain silently if the failure was already resolved.
+                if (command.type === 'reset' && !this.failureManager.hasFixableFailureAt(machineX)) {
+                    console.log(`[ActionExecutor] ${displayName} reset at ${machineName} drained — breaker already reset`);
+                    this.releaseAgentReservation(agentId);
+                    return this.clearOnSuccess(agentId);
+                }
                 const fixDuration = this.getFixDuration(machineId);
                 const taskName = command.type === 'reset' ? 'resetting' : `interacting_${machineName}`;
                 this.busyInfo.set(agentId, { task: taskName, timeRemaining: fixDuration });
@@ -186,6 +200,22 @@ export class ActionExecutor {
 
     getReservations (): Map<string, string> {
         return new Map(this.machineReservations);
+    }
+
+    cancelStaleRepairs (): void {
+        for (const [agentId, info] of this.busyInfo) {
+            if (info.task !== 'repairing' && info.task !== 'resetting') continue;
+            const binding = this.bindings.find(b => b.agentId === agentId);
+            if (!binding) continue;
+            const x = Math.floor(binding.npc.x);
+            if (!this.failureManager.hasFixableFailureAt(x)) {
+                console.log(`[ActionExecutor] ${binding.displayName} ${info.task} cancelled — failure already resolved`);
+                this.busyInfo.delete(agentId);
+                binding.npc.stopSpecial();
+                this.releaseAgentReservation(agentId);
+                if (this.onTaskFinished) this.onTaskFinished(agentId, info.task);
+            }
+        }
     }
 
     decrementBusyTimers (deltaSeconds: number): void {

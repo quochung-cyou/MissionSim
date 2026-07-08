@@ -1,4 +1,5 @@
 import { AgentCommand } from './QwenClient';
+import { BackendClient, RecordSave, RecordsQuery } from './BackendClient';
 
 export interface LogEntry {
     tick: number;
@@ -21,6 +22,8 @@ export interface GameRecord {
     agentCount: number;
     agents: { agentId: string; displayName: string; role: string; scientistSet: number }[];
     entries: LogEntry[];
+    sessionId?: string;
+    sessionDisplayName?: string;
     finalState?: {
         oxygen: number;
         oil: number;
@@ -30,14 +33,12 @@ export interface GameRecord {
     };
 }
 
-const STORAGE_KEY = 'game_history';
-const MAX_RECORDS = 20;
-
 export class GameLogger {
     private entries: LogEntry[] = [];
     private startTime = 0;
     private tickCount = 0;
     private agents: { agentId: string; displayName: string; role: string; scientistSet: number }[] = [];
+    private sessionId: string = '';
 
     start (agents: { agentId: string; displayName: string; role: string; scientistSet: number }[]): void {
         this.entries = [];
@@ -45,6 +46,10 @@ export class GameLogger {
         this.tickCount = 0;
         this.agents = agents;
         this.log(0, 'system', 'Game session started');
+    }
+
+    setSessionId (sessionId: string): void {
+        this.sessionId = sessionId;
     }
 
     setTick (tick: number): void {
@@ -99,7 +104,7 @@ export class GameLogger {
         this.log(tick, 'task_complete', task, { agent, agent_display: displayName });
     }
 
-    finish (result: GameRecord['result'], endReason: string, finalState?: GameRecord['finalState']): GameRecord {
+    async finish (result: GameRecord['result'], endReason: string, finalState?: GameRecord['finalState']): Promise<GameRecord> {
         const record: GameRecord = {
             id: `${Date.now()}`,
             date: new Date().toISOString(),
@@ -112,39 +117,65 @@ export class GameLogger {
             entries: this.entries,
             finalState,
         };
-        this.saveToStorage(record);
+
+        if (this.sessionId) {
+            await this.saveToBackend(record);
+        } else {
+            console.warn('[GameLogger] No sessionId set, skipping backend save');
+        }
+
         return record;
     }
 
-    private saveToStorage (record: GameRecord): void {
+    private async saveToBackend (record: GameRecord): Promise<void> {
         try {
-            const existing = GameLogger.loadAll();
-            existing.unshift(record);
-            const trimmed = existing.slice(0, MAX_RECORDS);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
-            console.log(`[GameLogger] Saved game record ${record.id} to localStorage (${trimmed.length} total)`);
+            const recordSave: RecordSave = {
+                id: record.id,
+                result: record.result,
+                durationMs: record.durationMs,
+                recordJson: JSON.stringify(record)
+            };
+
+            await BackendClient.saveRecord(this.sessionId, recordSave);
+            console.log(`[GameLogger] Saved game record ${record.id} to backend for session ${this.sessionId}`);
         } catch (e) {
-            console.error('[GameLogger] Failed to save to localStorage:', e);
+            console.error('[GameLogger] Failed to save to backend:', e);
         }
     }
 
-    static loadAll (): GameRecord[] {
+    static async loadAll (sessionId: string): Promise<GameRecord[]> {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return [];
-            return JSON.parse(raw) as GameRecord[];
+            const records = await BackendClient.getRecords(sessionId);
+            return records.map(r => JSON.parse(r.record_json) as GameRecord);
         } catch (e) {
-            console.error('[GameLogger] Failed to load from localStorage:', e);
+            console.error('[GameLogger] Failed to load from backend:', e);
             return [];
         }
     }
 
-    static clearAll (): void {
-        localStorage.removeItem(STORAGE_KEY);
+    static async loadAllGlobal (query: RecordsQuery = {}): Promise<GameRecord[]> {
+        try {
+            const records = await BackendClient.getAllRecords(query);
+            return records.map(r => {
+                const record = JSON.parse(r.record_json) as GameRecord;
+                record.sessionId = r.session_id;
+                record.sessionDisplayName = r.session_display_name || r.session_id;
+                return record;
+            });
+        } catch (e) {
+            console.error('[GameLogger] Failed to load global records from backend:', e);
+            return [];
+        }
     }
 
-    static loadById (id: string): GameRecord | null {
-        const all = GameLogger.loadAll();
-        return all.find(r => r.id === id) ?? null;
+    static async loadById (sessionId: string, id: string): Promise<GameRecord | null> {
+        try {
+            const records = await BackendClient.getRecords(sessionId);
+            const record = records.find(r => r.id === id);
+            return record ? JSON.parse(record.record_json) as GameRecord : null;
+        } catch (e) {
+            console.error('[GameLogger] Failed to load from backend:', e);
+            return null;
+        }
     }
 }

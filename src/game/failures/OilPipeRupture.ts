@@ -45,4 +45,11 @@ export class OilPipeRupture extends Failure {
     resolveEffect (_ctx: MechanicContext): void {
         this.heatAboveThresholdMs = 0;
     }
+
+    getAlertMessage (_ctx: MechanicContext): string {
+        const currentHeat = Math.round(this.reactor.getHeat());
+        const accumulated = Math.round(this.heatAboveThresholdMs / 100) / 10;
+        const triggerSeconds = Math.round(this.triggerDurationMs / 100) / 10;
+        return `OIL_PIPE_RUPTURE: Mach-3 heat stayed above threshold ${this.heatThreshold}°C (current: ${currentHeat}°C). Pipe ruptured after ${accumulated}s of overload (threshold: ${triggerSeconds}s).`;
+    }
 }

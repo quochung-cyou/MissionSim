@@ -16,6 +16,10 @@ export class TotalBlackout extends Failure {
 
     resolveEffect (_ctx: MechanicContext): void {}
 
+    getAlertMessage (ctx: MechanicContext): string {
+        return `TOTAL_BLACKOUT: oil reserves depleted (${Math.round(ctx.state.oilLevel)}/${ctx.state.maxOilLevel}). Base power capacity dropped to 0 and all systems are shutting down.`;
+    }
+
     canFixAt (_x: number): boolean {
         return false;
     }

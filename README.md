@@ -4,11 +4,6 @@
 
 Mission Sim is a live multi-agent simulation where AI crews — Mechanic, Director, Scientist — operate a critical facility under pressure. Every crew member is powered by a real LLM (Qwen Cloud) and makes autonomous decisions through an event-driven, speaker-token architecture. The platform is built as a **live mission console**: a judge or operator can describe new constraints, failures, or rule changes in natural language, and the simulation applies them instantly while the agents are running.
 
-## Repository
-
-- **Source code & assets:** https://github.com/YOUR_USERNAME/mission-sim
-- **License:** MIT (see `LICENSE`)
-- **Status:** Public and open-source — all code, assets, and instructions required to run the project are included in this repository.
 
 ## The Hackathon Pitch
 
@@ -24,6 +19,8 @@ Mission Sim is a live mission console for the age of embodied AI. Instead of pre
 ![Mission Sim main view](docs/screenshots/mission-sim-main.png)
 ![Mission Sim gameplay - AI crews operating the facility](docs/screenshots/mission-sim-gameplay-1.png)
 ![Mission Sim gameplay - live scenario injection](docs/screenshots/mission-sim-gameplay-2.png)
+![Mission Sim gameplay - process explain](docs/screenshots/process_explain.png)
+![Mission Sim gameplay - mission diagram](docs/screenshots/mission_diagram.png)
 
 ## Requirements
 

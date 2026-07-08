@@ -59,14 +59,17 @@ export function createScrollPanel (
     height: number,
     depth = 2
 ): ScrollPanel {
-    // Content container lives at the ROOT of the scene display list so that
-    // Phaser's geometry mask is applied correctly in both Canvas and WebGL.
+    // Content container lives at the ROOT of the scene display list.
     const content = scene.add.container(0, 0).setDepth(depth);
 
     // Mask source must not be inside a container. Add it to the scene but keep it invisible.
     const maskShape = scene.add.rectangle(x, y, width, height, 0xffffff).setVisible(false);
-    const mask = maskShape.createGeometryMask();
-    content.setMask(mask);
+
+    // Phaser 4: use a mask filter instead of the deprecated setMask for WebGL.
+    content.enableFilters();
+    if (content.filters?.internal) {
+        content.filters.internal.addMask(maskShape);
+    }
 
     let contentHeight = 0;
     let scrollY = 0;

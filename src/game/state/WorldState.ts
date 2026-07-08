@@ -5,6 +5,7 @@ import { NPC } from '../entities/NPC';
 import { FailureManager } from '../failures/FailureManager';
 import { MachineRegistry } from '../services/MachineRegistry';
 import { MachineId } from '../constants/MachineId';
+import { MechanicContext } from '../mechanics/IMechanic';
 
 export type AgentRole = string;
 
@@ -142,11 +143,11 @@ export class WorldStateBuilder {
         };
     }
 
-    static buildAlerts (failureManager: FailureManager): string[] {
+    static buildAlerts (failureManager: FailureManager, ctx: MechanicContext): string[] {
         const alerts: string[] = [];
         const active = failureManager.getActiveFailures();
         for (const failure of active) {
-            alerts.push(`hasCrisis: ${failure.type} at x=${failure.fixPositionX}`);
+            alerts.push(`hasCrisis: ${failure.getAlertMessage(ctx)}`);
         }
         return alerts;
     }

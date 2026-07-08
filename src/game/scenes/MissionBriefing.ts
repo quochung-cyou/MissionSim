@@ -10,7 +10,7 @@ const SCREEN_H = 640;
 
 export class MissionBriefing extends Scene
 {
-    private levelConfig!: LevelConfig;
+    private levelConfig!: LevelConfig & { sessionId?: string };
     private hasStarted = false;
 
     constructor ()
@@ -18,7 +18,7 @@ export class MissionBriefing extends Scene
         super('MissionBriefing');
     }
 
-    create (data: LevelConfig)
+    create (data: LevelConfig & { sessionId?: string })
     {
         this.levelConfig = data;
         this.hasStarted = false;

@@ -81,11 +81,21 @@ export class Preloader extends Scene
         this.load.image(keys.Special, `${basePath}/Special.png`);
     }
 
-    create ()
+    async create ()
     {
+        await this.loadFonts();
+
         this.createScientistAnimations();
         this.createEnergyObjectAnimations();
         this.scene.start('MainMenu');
+    }
+
+    private async loadFonts (): Promise<void> {
+        try {
+            await document.fonts.load('10px "Press Start 2P"');
+        } catch (err) {
+            console.warn('[Preloader] Failed to preload web font:', err);
+        }
     }
 
     private createScientistAnimations (): void

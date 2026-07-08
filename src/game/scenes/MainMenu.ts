@@ -5,16 +5,19 @@ import { TitleComponent } from '../ui/main-menu/TitleComponent';
 import { LevelCard } from '../ui/main-menu/LevelCard';
 import { NpcTypePanel } from '../ui/main-menu/NpcTypePanel';
 import { StartButton } from '../ui/main-menu/StartButton';
-import { ApiKeyDialog } from '../ui/game/ApiKeyDialog';
-import { ApiKeyManager } from '../utils/ApiKeyManager';
+import { SessionDialog } from '../ui/main-menu/SessionDialog';
 import { SceneKeys } from '../constants/SceneKeys';
+
+const SESSION_STORAGE_KEY = 'mission_sim_current_session';
 
 export class MainMenu extends Scene
 {
     private selectedLevel: LevelConfig;
     private background!: ParallaxMenuBackground;
     private npcTypePanel!: NpcTypePanel;
-    private apiKeyDialog!: ApiKeyDialog;
+    private sessionDialog!: SessionDialog;
+    private currentSessionId: string = '';
+    private menuContainer: Phaser.GameObjects.Container | null = null;
 
     constructor ()
     {
@@ -24,9 +27,41 @@ export class MainMenu extends Scene
 
     create ()
     {
+        this.currentSessionId = localStorage.getItem(SESSION_STORAGE_KEY) || '';
+
         this.background = new ParallaxMenuBackground(this);
         this.background.create();
         this.background.addVignette();
+
+        this.sessionDialog = new SessionDialog(
+            this,
+            (sessionId: string) => this.saveSessionId(sessionId)
+        );
+
+        if (this.currentSessionId) {
+            this.buildMenu();
+        } else {
+            this.sessionDialog.show('');
+        }
+    }
+
+    update (_time: number, delta: number): void
+    {
+        this.background.update(delta);
+    }
+
+    private saveSessionId (sessionId: string): void
+    {
+        this.currentSessionId = sessionId;
+        localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+        this.sessionDialog.hide();
+        this.buildMenu();
+    }
+
+    private buildMenu (): void
+    {
+        this.menuContainer?.destroy();
+        this.menuContainer = this.add.container(0, 0).setDepth(1);
 
         new TitleComponent(this).create(512, 70);
         new LevelCard(this).create(512, 290, this.selectedLevel);
@@ -43,73 +78,38 @@ export class MainMenu extends Scene
 
         new StartButton(this).create(512, 620, () => this.startGame());
 
-        this.createApiKeyButton();
         this.createHistoryButton();
-
-        this.apiKeyDialog = new ApiKeyDialog(
-            this,
-            (key) => this.saveApiKey(key),
-            () => this.hideApiKeyDialog()
-        );
-
-        if (!ApiKeyManager.hasApiKey()) {
-            this.showApiKeyDialog();
-        }
+        this.createChangeSessionButton();
+        this.showSessionName();
     }
 
-    update (_time: number, delta: number): void
+    private showSessionName (): void
     {
-        this.background.update(delta);
+        if (!this.currentSessionId) return;
+        const text = this.add.text(16, 16, `Session: ${this.currentSessionId}`, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '8px',
+            color: '#aaaaaa'
+        })
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(100);
+        this.menuContainer?.add(text);
     }
 
     private startGame (): void
     {
-        this.scene.start('MissionBriefing', this.selectedLevel);
+        if (!this.currentSessionId) {
+            this.sessionDialog.show('');
+            return;
+        }
+        this.scene.start('MissionBriefing', { ...this.selectedLevel, sessionId: this.currentSessionId });
     }
 
-    private showApiKeyDialog (): void
+    private changeSession (): void
     {
-        const existingKey = ApiKeyManager.getApiKey();
-        this.apiKeyDialog.show(existingKey || undefined);
-    }
-
-    private hideApiKeyDialog (): void
-    {
-        this.apiKeyDialog.hide();
-    }
-
-    private saveApiKey (key: string): void
-    {
-        ApiKeyManager.setApiKey(key);
-        this.hideApiKeyDialog();
-    }
-
-    private createApiKeyButton (): void
-    {
-        const gameWidth = this.scale.width;
-        const buttonWidth = 74;
-        const buttonHeight = 30;
-
-        const bg = this.add.rectangle(gameWidth - buttonWidth / 2 - 16, buttonHeight / 2 + 16, buttonWidth, buttonHeight, 0x6c5ce7)
-            .setStrokeStyle(2, 0xffffff)
-            .setScrollFactor(0)
-            .setDepth(100);
-
-        const label = this.add.text(gameWidth - buttonWidth / 2 - 16, buttonHeight / 2 + 16, 'API KEY', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '10px',
-            color: '#ffffff'
-        })
-            .setOrigin(0.5)
-            .setScrollFactor(0)
-            .setDepth(101);
-
-        [bg, label].forEach(obj => {
-            obj.setInteractive();
-            obj.on('pointerover', () => bg.setFillStyle(0x9c27b0));
-            obj.on('pointerout', () => bg.setFillStyle(0x6c5ce7));
-            obj.on('pointerdown', () => this.showApiKeyDialog());
-        });
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+        this.scene.restart();
     }
 
     private createHistoryButton (): void
@@ -138,7 +138,47 @@ export class MainMenu extends Scene
             obj.setInteractive();
             obj.on('pointerover', () => bg.setFillStyle(0x3a6a9e));
             obj.on('pointerout', () => bg.setFillStyle(0x2a4a6e));
-            obj.on('pointerdown', () => this.scene.start(SceneKeys.GameHistory));
+            obj.on('pointerdown', () => this.scene.start(SceneKeys.GameHistory, { sessionId: this.currentSessionId }));
         });
+
+        this.menuContainer?.add([bg, label]);
+    }
+
+    private createChangeSessionButton (): void
+    {
+        const gameWidth = this.scale.width;
+        const buttonWidth = 110;
+        const buttonHeight = 22;
+        const xPos = gameWidth - buttonWidth / 2 - 16;
+        const yPos = buttonHeight / 2 + 16;
+
+        const bg = this.add.rectangle(xPos, yPos, buttonWidth, buttonHeight, 0x4a4a6e)
+            .setStrokeStyle(1, 0xffffff)
+            .setScrollFactor(0)
+            .setDepth(100);
+
+        const label = this.add.text(xPos, yPos, 'CHANGE', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '8px',
+            color: '#aaaaaa'
+        })
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(101);
+
+        [bg, label].forEach(obj => {
+            obj.setInteractive();
+            obj.on('pointerover', () => {
+                bg.setFillStyle(0x6a6a8e);
+                label.setColor('#ffffff');
+            });
+            obj.on('pointerout', () => {
+                bg.setFillStyle(0x4a4a6e);
+                label.setColor('#aaaaaa');
+            });
+            obj.on('pointerdown', () => this.changeSession());
+        });
+
+        this.menuContainer?.add([bg, label]);
     }
 }

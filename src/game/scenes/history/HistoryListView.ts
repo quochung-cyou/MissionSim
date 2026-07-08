@@ -27,15 +27,17 @@ export class HistoryListView {
     constructor (
         scene: Phaser.Scene,
         records: GameRecord[],
-        onSelect: (record: GameRecord) => void
+        onSelect: (record: GameRecord) => void,
+        headerText?: string
     ) {
         this.scene = scene;
         this.onSelect = onSelect;
         this.container = scene.add.container(0, 0).setDepth(2);
 
-        const count = this.scene.add.text(SCREEN_W / 2, 60, `${records.length} game(s) recorded`, {
+        const header = headerText ?? `${records.length} game(s) recorded`;
+        const count = this.scene.add.text(SCREEN_W / 2, 62, header, {
             fontFamily: FONT,
-            fontSize: '10px',
+            fontSize: '9px',
             color: '#666666',
         })
             .setOrigin(0.5);
@@ -81,7 +83,7 @@ export class HistoryListView {
             .setStrokeStyle(2, 0x333355)
             .setInteractive({ useHandCursor: true });
 
-        const title = this.scene.add.text(CARD_X - CARD_W / 2 + 16, y + 12,
+        const title = this.scene.add.text(CARD_X - CARD_W / 2 + 16, y + 10,
             formatRecordTitle(record), {
                 fontFamily: FONT,
                 fontSize: '12px',
@@ -91,7 +93,21 @@ export class HistoryListView {
             })
             .setOrigin(0, 0.5);
 
-        const dateRow = this.scene.add.text(CARD_X - CARD_W / 2 + 16, y + 32,
+        const sessionText = record.sessionDisplayName
+            ? `Session: ${record.sessionDisplayName}`
+            : null;
+
+        const sessionRow = sessionText
+            ? this.scene.add.text(CARD_X - CARD_W / 2 + 16, y + 28,
+                sessionText, {
+                    fontFamily: FONT,
+                    fontSize: '8px',
+                    color: '#aaaaaa',
+                })
+                .setOrigin(0, 0.5)
+            : null;
+
+        const dateRow = this.scene.add.text(CARD_X - CARD_W / 2 + 16, y + (sessionRow ? 44 : 32),
             new Date(record.date).toLocaleString(), {
                 fontFamily: FONT,
                 fontSize: '8px',
@@ -99,7 +115,7 @@ export class HistoryListView {
             })
             .setOrigin(0, 0.5);
 
-        const statsRow = this.scene.add.text(CARD_X - CARD_W / 2 + 16, y + 50,
+        const statsRow = this.scene.add.text(CARD_X - CARD_W / 2 + 16, y + (sessionRow ? 60 : 50),
             formatRecordStats(record), {
                 fontFamily: FONT,
                 fontSize: '8px',
@@ -126,7 +142,8 @@ export class HistoryListView {
 
         this.recordCards.push({ bg, record });
 
-        card.add([bg, title, dateRow, statsRow, arrow]);
+        const cardItems: (Phaser.GameObjects.GameObject | null)[] = [bg, title, sessionRow, dateRow, statsRow, arrow];
+        card.add(cardItems.filter(item => item !== null) as Phaser.GameObjects.GameObject[]);
         return card;
     }
 

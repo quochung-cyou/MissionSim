@@ -1,8 +1,5 @@
-import { ApiKeyManager } from '../utils/ApiKeyManager';
+import { BackendClient } from './BackendClient';
 import { PromptBuilder, PromptContext } from './PromptBuilder';
-
-const QWEN_API_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
-const DEFAULT_MODEL = 'qwen-max';
 
 const FALLBACK_RESPONSE: AgentResponse = {
     speak: 'I am recalculating my coordinates.',
@@ -54,16 +51,16 @@ export class QwenClient {
 
     constructor (config: QwenClientConfig = {}) {
         this.config = {
-            model: config.model ?? DEFAULT_MODEL,
+            model: config.model ?? 'qwen-max',
             enableThinking: config.enableThinking ?? true,
-            stream: config.stream ?? true,
+            stream: config.stream ?? false,
             temperature: config.temperature ?? 0.7,
             maxTokens: config.maxTokens ?? 2048,
         };
     }
 
     static isApiKeyAvailable (): boolean {
-        return ApiKeyManager.hasApiKey();
+        return true;
     }
 
     buildSystemMessage (ctx: PromptContext): ChatMessage {
@@ -74,146 +71,20 @@ export class QwenClient {
     }
 
     async chat (messages: ChatMessage[]): Promise<string> {
-        const apiKey = ApiKeyManager.getApiKey();
-        if (!apiKey) {
-            throw new Error('No API key found. Please set your Qwen API key in the game settings.');
-        }
+        console.log(`[QwenClient] chat() — messages=${messages.length}`);
 
-        console.log(`[QwenClient] chat() — model=${this.config.model}, messages=${messages.length}`);
-
-        const body = {
-            model: this.config.model,
-            messages,
-            stream: false,
-            enable_thinking: this.config.enableThinking,
+        const { content } = await BackendClient.chat(messages, {
             temperature: this.config.temperature,
             max_tokens: this.config.maxTokens,
-        };
-
-        const response = await fetch(QWEN_API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body),
+            enable_thinking: this.config.enableThinking
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[QwenClient] API error ${response.status}: ${errorText}`);
-            throw new Error(`Qwen API error (${response.status}): ${errorText}`);
-        }
-
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content ?? '';
         console.log(`[QwenClient] chat() response length=${content.length}`);
         return content;
     }
 
-    async *chatStream (messages: ChatMessage[]): AsyncGenerator<StreamChunk> {
-        const apiKey = ApiKeyManager.getApiKey();
-        if (!apiKey) {
-            throw new Error('No API key found. Please set your Qwen API key in the game settings.');
-        }
-
-        console.log(`[QwenClient] chatStream() — model=${this.config.model}, messages=${messages.length}`);
-
-        const body = {
-            model: this.config.model,
-            messages,
-            stream: true,
-            enable_thinking: this.config.enableThinking,
-            temperature: this.config.temperature,
-            max_tokens: this.config.maxTokens,
-        };
-
-        const response = await fetch(QWEN_API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[QwenClient] Stream API error ${response.status}: ${errorText}`);
-            throw new Error(`Qwen API error (${response.status}): ${errorText}`);
-        }
-
-        if (!response.body) {
-            throw new Error('No response body from Qwen API.');
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let contentAccumulator = '';
-        let reasoningAccumulator = '';
-
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-
-                const lines = buffer.split('\n');
-                buffer = lines.pop() ?? '';
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || !trimmed.startsWith('data: ')) continue;
-
-                    const data = trimmed.slice(6);
-                    if (data === '[DONE]') {
-                        yield { content: contentAccumulator, reasoningContent: reasoningAccumulator, done: true };
-                        return;
-                    }
-
-                    try {
-                        const parsed = JSON.parse(data);
-                        const delta = parsed.choices?.[0]?.delta;
-                        if (!delta) continue;
-
-                        if (delta.content) {
-                            contentAccumulator += delta.content;
-                        }
-                        if (delta.reasoning_content) {
-                            reasoningAccumulator += delta.reasoning_content;
-                        }
-
-                        yield {
-                            content: contentAccumulator,
-                            reasoningContent: reasoningAccumulator,
-                            done: false,
-                        };
-                    } catch {
-                        // Skip malformed JSON chunks
-                    }
-                }
-            }
-        } finally {
-            reader.releaseLock();
-        }
-
-        yield { content: contentAccumulator, reasoningContent: reasoningAccumulator, done: true };
-    }
-
     async chatAndParse (messages: ChatMessage[]): Promise<AgentResponse> {
-        let fullContent: string;
-
-        if (this.config.stream) {
-            let lastChunk: StreamChunk | null = null;
-            for await (const chunk of this.chatStream(messages)) {
-                lastChunk = chunk;
-            }
-            fullContent = lastChunk?.content ?? '';
-        } else {
-            fullContent = await this.chat(messages);
-        }
+        const fullContent = await this.chat(messages);
 
         console.log(`[QwenClient] chatAndParse() raw content: ${fullContent.substring(0, 200)}${fullContent.length > 200 ? '...' : ''}`);
 

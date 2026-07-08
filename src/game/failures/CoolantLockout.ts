@@ -35,4 +35,8 @@ export class CoolantLockout extends Failure {
         this.powerDist.resetBreaker();
         this.onUnlock();
     }
+
+    getAlertMessage (_ctx: MechanicContext): string {
+        return `COOLANT_LOCKOUT: power distribution breaker tripped at position x=${this.fixPositionX}. Coolant pump is locked out and reactor heat will rise until repaired.`;
+    }
 }

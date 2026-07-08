@@ -16,6 +16,8 @@ import { ActionExecutor } from './ActionExecutor';
 import { DialogBridge } from './DialogBridge';
 import { InitialAlertSeeder } from './InitialAlertSeeder';
 import { GameLogger, GameRecord } from '../services/GameLogger';
+import { MechanicContext } from '../mechanics/IMechanic';
+import { GameEventBus } from '../events/GameEventBus';
 
 export class SimulationManager {
     private broker: MessageBroker;
@@ -59,13 +61,14 @@ export class SimulationManager {
         private readonly machineManager: MachineManager,
         private readonly failureManager: FailureManager,
         private readonly machineRegistry: MachineRegistry,
-        private readonly levelConfig: LevelConfig
+        private readonly levelConfig: LevelConfig,
+        private readonly eventBus: GameEventBus
     ) {
         this.broker = new MessageBroker();
         this.client = new QwenClient({ stream: false, enableThinking: false });
         this.buildBindings();
         this.createWorkers();
-        this.actionExecutor = new ActionExecutor(this.bindings, this.machineRegistry, this.levelConfig, this.gameState);
+        this.actionExecutor = new ActionExecutor(this.bindings, this.machineRegistry, this.levelConfig, this.gameState, this.failureManager);
         this.logger = new GameLogger();
         this.logger.start(this.bindings.map(b => ({
             agentId: b.agentId,
@@ -205,18 +208,14 @@ export class SimulationManager {
         this.lastTrendValues = { oxygen, oil, heat, extraction };
     }
 
+    private buildContext (): MechanicContext {
+        return { state: this.gameState, bus: this.eventBus };
+    }
+
     buildFreshState (): WorldState {
-        const failureAlerts = WorldStateBuilder.buildAlerts(this.failureManager);
+        const failureAlerts = WorldStateBuilder.buildAlerts(this.failureManager, this.buildContext());
         const initialAlerts = this.alertSeeder.getSystemAlerts();
         const alerts = [...initialAlerts, ...failureAlerts];
-
-        const OXYGEN_CRISIS_THRESHOLD = 30;
-        const isLowOxygen = this.gameState.globalOxygen <= OXYGEN_CRISIS_THRESHOLD;
-        if (isLowOxygen) {
-            if (!alerts.includes(`hasCrisis: LOW_OXYGEN at ${Math.round(this.gameState.globalOxygen)}%`)) {
-                alerts.push(`hasCrisis: LOW_OXYGEN at ${Math.round(this.gameState.globalOxygen)}%`);
-            }
-        }
 
         const state = WorldStateBuilder.build(
             this.tickCount,
@@ -252,20 +251,11 @@ export class SimulationManager {
             this.dialogService.setCurrentTick(this.tickCount);
         }
 
-        const failureAlerts = WorldStateBuilder.buildAlerts(this.failureManager);
+        const failureAlerts = WorldStateBuilder.buildAlerts(this.failureManager, this.buildContext());
         const initialAlerts = this.alertSeeder.getSystemAlerts();
         const alerts = [...initialAlerts, ...failureAlerts];
 
-        // Low-oxygen crisis: include in system alerts and crisis flag when oxygen drops below 30%
-        const OXYGEN_CRISIS_THRESHOLD = 30;
-        const isLowOxygen = this.gameState.globalOxygen <= OXYGEN_CRISIS_THRESHOLD;
-        if (isLowOxygen) {
-            if (!alerts.includes(`hasCrisis: LOW_OXYGEN at ${Math.round(this.gameState.globalOxygen)}%`)) {
-                alerts.push(`hasCrisis: LOW_OXYGEN at ${Math.round(this.gameState.globalOxygen)}%`);
-            }
-        }
-
-        const hasRealCrisis = failureAlerts.length > 0 || isLowOxygen;
+        const hasRealCrisis = failureAlerts.length > 0;
 
         if (hasRealCrisis && !this.crisisActive) {
             this.crisisActive = true;
@@ -323,7 +313,8 @@ export class SimulationManager {
             console.log('[SimulationManager] Crisis resolved — all failures cleared');
         }
 
-        // Decrement busy timers
+        // Cancel repair/reset tasks whose failure was already fixed, then decrement timers.
+        this.actionExecutor.cancelStaleRepairs();
         this.actionExecutor.decrementBusyTimers(deltaSeconds);
 
         // Notify failure manager about agent positions for repair/reset
@@ -365,7 +356,7 @@ export class SimulationManager {
         };
     }
 
-    finishLogging (result: GameRecord['result'], endReason: string): GameRecord {
-        return this.logger.finish(result, endReason, this.getFinalState());
+    async finishLogging (result: GameRecord['result'], endReason: string): Promise<GameRecord> {
+        return await this.logger.finish(result, endReason, this.getFinalState());
     }
 }

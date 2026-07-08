@@ -19,6 +19,8 @@ export abstract class Failure {
 
     abstract resolveEffect (ctx: MechanicContext): void;
 
+    abstract getAlertMessage (ctx: MechanicContext): string;
+
     tick (deltaSeconds: number, ctx: MechanicContext): void {
         if (!this.active) {
             if (this.checkTrigger(deltaSeconds, ctx)) {

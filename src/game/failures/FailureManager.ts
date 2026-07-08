@@ -35,4 +35,8 @@ export class FailureManager {
     hasActiveFailure (type: string): boolean {
         return this.failures.some(f => f.type === type && f.isActive);
     }
+
+    hasFixableFailureAt (x: number): boolean {
+        return this.failures.some(f => f.isActive && f.canFixAt(x));
+    }
 }

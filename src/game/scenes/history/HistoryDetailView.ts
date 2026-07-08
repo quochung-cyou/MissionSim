@@ -40,7 +40,7 @@ export class HistoryDetailView {
             .setDepth(2);
         this.container.add(headerBg);
 
-        const title = this.scene.add.text(SCREEN_W / 2, 35, formatRecordTitle(record), {
+        const title = this.scene.add.text(SCREEN_W / 2, 32, formatRecordTitle(record), {
             fontFamily: FONT,
             fontSize: '14px',
             color: resultColor,
@@ -50,7 +50,16 @@ export class HistoryDetailView {
             .setOrigin(0.5)
             .setDepth(3);
 
-        const subtitle = this.scene.add.text(SCREEN_W / 2, 60, formatRecordSubtitle(record), {
+        const sessionName = record.sessionDisplayName || record.sessionId || 'Unknown session';
+        const sessionInfo = this.scene.add.text(SCREEN_W / 2, 52, `Session: ${sessionName}`, {
+            fontFamily: FONT,
+            fontSize: '8px',
+            color: '#aaaaaa',
+        })
+            .setOrigin(0.5)
+            .setDepth(3);
+
+        const subtitle = this.scene.add.text(SCREEN_W / 2, 68, formatRecordSubtitle(record), {
             fontFamily: FONT,
             fontSize: '8px',
             color: '#888888',
@@ -59,7 +68,7 @@ export class HistoryDetailView {
             .setDepth(3);
 
         const agentNames = record.agents.map(a => a.displayName).join(', ');
-        const crew = this.scene.add.text(SCREEN_W / 2, 85, `Crew: ${agentNames}`, {
+        const crew = this.scene.add.text(SCREEN_W / 2, 88, `Crew: ${agentNames}`, {
             fontFamily: FONT,
             fontSize: '9px',
             color: '#ce93d8',
@@ -67,7 +76,7 @@ export class HistoryDetailView {
             .setOrigin(0.5)
             .setDepth(3);
 
-        const headerItems: Phaser.GameObjects.GameObject[] = [title, subtitle, crew];
+        const headerItems: Phaser.GameObjects.GameObject[] = [title, sessionInfo, subtitle, crew];
 
         const finalState = formatFinalState(record);
         if (finalState) {
