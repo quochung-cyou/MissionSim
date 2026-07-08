@@ -1,0 +1,89 @@
+name: Deploy Backend to EC Instance (Docker)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+
+env:
+  REGISTRY: ghcr.io
+  # Use lowercase for image name to avoid docker build errors
+  IMAGE_NAME: ${{ github.repository_owner }}/missionsim-backend
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Execute remote SSH commands to pull and run Docker image
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: GITHUB_TOKEN
+          # We use lowercase github.repository_owner for pulling
+          script: |
+            # Convert owner to lowercase
+            OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+            IMAGE="${{ env.REGISTRY }}/$OWNER/missionsim-backend:latest"
+            
+            # Login to GHCR using the EPHEMERAL GitHub Actions token!
+            # This token is passed securely via SSH env, is only valid during this job run,
+            # and expires immediately after. Zero long-lived credentials on your server.
+            echo "$GITHUB_TOKEN" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            
+            # Pull the latest image
+            docker pull $IMAGE
+            
+            # Stop and remove the old container
+            docker stop missionsim-backend || true
+            docker rm missionsim-backend || true
+            
+            # Run the new container
+            # Make sure to create the .env file at /var/www/template-vite-ts/backend/.env on the server
+            docker run -d \
+              --name missionsim-backend \
+              --restart unless-stopped \
+              --env-file /var/www/template-vite-ts/backend/.env \
+              -p 3001:3001 \
+              $IMAGE
