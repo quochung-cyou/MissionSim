@@ -2,6 +2,8 @@
 
 Python/FastAPI backend for MissionSim - provides LLM proxy with automatic model rotation and session history management.
 
+
+
 ## Architecture
 
 The backend follows a layered architecture:

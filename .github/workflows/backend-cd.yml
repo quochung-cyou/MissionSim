@@ -1,6 +1,7 @@
 name: Deploy Backend to EC Instance (Docker)
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
