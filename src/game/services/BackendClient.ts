@@ -46,7 +46,7 @@ interface RecordsQuery {
 }
 
 class BackendClient {
-    private static readonly API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+    private static readonly API_BASE = 'https://apimissionsim.quochung.cyou/api';
 
     static async chat(messages: ChatMessage[], options: {
         temperature?: number;
