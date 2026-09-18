@@ -50,7 +50,7 @@ class QwenService:
         enable_thinking: bool = False
     ) -> tuple[str, str]:
         """
-        Call Qwen API with automatic model rotation on 403/429.
+        Call Qwen API with automatic model rotation on 403/404/429.
         
         Returns:
             tuple: (content, model_used)
@@ -79,8 +79,8 @@ class QwenService:
                 last_error = str(e)
                 status_code = e.response.status_code
                 
-                # Drop model on 403 or 429
-                if status_code in (403, 429):
+                # Drop model on 403 (quota/access), 404 (model_not_found), or 429 (rate limit)
+                if status_code in (403, 404, 429):
                     logger.warning(f"Model {model} failed with status {status_code}, dropping from registry")
                     await self.drop_model(model)
                     continue

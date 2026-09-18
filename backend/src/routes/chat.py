@@ -16,7 +16,7 @@ async def chat(
     Proxy chat request to Qwen Cloud API with automatic model rotation.
     
     This endpoint forwards the request to Qwen Cloud using the stored API key
-    and the current active model. If the model returns 403 or 429, it is automatically
+    and the current active model. If the model returns 403, 404, or 429, it is automatically
     dropped from the registry and the next model is tried.
     """
     qwen_service = QwenService(db)
