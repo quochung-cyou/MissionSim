@@ -77,6 +77,7 @@ jobs:
               --name missionsim-backend \
               --restart unless-stopped \
               --env-file /var/www/template-vite-ts/backend/.env \
+              -v missionsim-backend-data:/app/data \
               -p 3001:3001 \
               $IMAGE
 
